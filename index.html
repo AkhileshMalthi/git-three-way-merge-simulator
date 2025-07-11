@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Three-Way Merge Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #3498db, #2c3e50);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .input-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+
+        .base-label { color: #e67e22; }
+        .ours-label { color: #27ae60; }
+        .theirs-label { color: #3498db; }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .base-input { border-color: #e67e22; }
+        .ours-input { border-color: #27ae60; }
+        .theirs-input { border-color: #3498db; }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .merge-btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            font-weight: 600;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .merge-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+        }
+
+        .merge-btn:active {
+            transform: translateY(0);
+        }
+
+        .output-section {
+            margin-top: 30px;
+        }
+
+        .output-section label {
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 1.3em;
+            display: block;
+        }
+
+        .merged-result {
+            width: 100%;
+            min-height: 300px;
+            padding: 20px;
+            border: 2px solid #34495e;
+            border-radius: 10px;
+            background: #f8f9fa;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+
+        /* Merge result highlighting */
+        .line-identical {
+            background: transparent;
+        }
+
+        .line-ours {
+            background: rgba(39, 174, 96, 0.2);
+            border-left: 4px solid #27ae60;
+            padding-left: 10px;
+            margin: 2px 0;
+        }
+
+        .line-theirs {
+            background: rgba(52, 152, 219, 0.2);
+            border-left: 4px solid #3498db;
+            padding-left: 10px;
+            margin: 2px 0;
+        }
+
+        .line-conflict {
+            background: rgba(231, 76, 60, 0.2);
+            border-left: 4px solid #e74c3c;
+            padding-left: 10px;
+            margin: 2px 0;
+        }
+
+        .conflict-marker {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .legend-identical { background: transparent; }
+        .legend-ours { background: rgba(39, 174, 96, 0.2); }
+        .legend-theirs { background: rgba(52, 152, 219, 0.2); }
+        .legend-conflict { background: rgba(231, 76, 60, 0.2); }
+
+        .example-btn {
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 0.9em;
+            border-radius: 15px;
+            cursor: pointer;
+            margin-left: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .example-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(155, 89, 182, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .input-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .legend {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Git Three-Way Merge Simulator</h1>
+        
+        <div class="input-section">
+            <div class="input-group">
+                <label for="base-input" class="base-label">Common Ancestor (Base)</label>
+                <textarea id="base-input" class="base-input" placeholder="Enter the original file content here..."></textarea>
+            </div>
+            
+            <div class="input-group">
+                <label for="ours-input" class="ours-label">Our Branch (HEAD)</label>
+                <textarea id="ours-input" class="ours-input" placeholder="Enter our branch changes here..."></textarea>
+            </div>
+            
+            <div class="input-group">
+                <label for="theirs-input" class="theirs-label">Their Branch (MERGE_HEAD)</label>
+                <textarea id="theirs-input" class="theirs-input" placeholder="Enter their branch changes here..."></textarea>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="merge-btn" class="merge-btn">🔀 Run Merge Simulation</button>
+            <button id="example-btn" class="example-btn">📝 Load Example</button>
+        </div>
+        
+        <div class="output-section">
+            <label for="merged-result">Merged Result</label>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color legend-identical"></div>
+                    <span>Identical</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-ours"></div>
+                    <span>Our Changes</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-theirs"></div>
+                    <span>Their Changes</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-conflict"></div>
+                    <span>Conflicts</span>
+                </div>
+            </div>
+            
+            <div id="merged-result" class="merged-result"></div>
+        </div>
+    </div>
+
+    <script>
+        class GitMergeSimulator {
+            constructor() {
+                this.baseInput = document.getElementById('base-input');
+                this.oursInput = document.getElementById('ours-input');
+                this.theirsInput = document.getElementById('theirs-input');
+                this.mergedResult = document.getElementById('merged-result');
+                this.mergeBtn = document.getElementById('merge-btn');
+                this.exampleBtn = document.getElementById('example-btn');
+                
+                this.setupEventListeners();
+            }
+            
+            setupEventListeners() {
+                this.mergeBtn.addEventListener('click', () => this.runMergeSimulation());
+                this.exampleBtn.addEventListener('click', () => this.loadExample());
+            }
+            
+            loadExample() {
+                this.baseInput.value = `function calculateTotal(items) {
+    let total = 0;
+    for (let item of items) {
+        total += item.price;
+    }
+    return total;
+}
+
+const TAX_RATE = 0.08;`;
+
+                this.oursInput.value = `function calculateTotal(items) {
+    let total = 0;
+    for (let item of items) {
+        total += item.price * item.quantity;
+    }
+    return total;
+}
+
+const TAX_RATE = 0.08;
+const DISCOUNT_RATE = 0.1;`;
+
+                this.theirsInput.value = `function calculateTotal(items) {
+    let total = 0;
+    for (let item of items) {
+        total += item.price;
+    }
+    return Math.round(total * 100) / 100;
+}
+
+const TAX_RATE = 0.09;`;
+            }
+            
+            runMergeSimulation() {
+                const baseLines = this.splitIntoLines(this.baseInput.value);
+                const oursLines = this.splitIntoLines(this.oursInput.value);
+                const theirsLines = this.splitIntoLines(this.theirsInput.value);
+                
+                const mergedResult = this.performThreeWayMerge(baseLines, oursLines, theirsLines);
+                this.displayMergedResult(mergedResult);
+            }
+            
+            splitIntoLines(text) {
+                return text.split('\n');
+            }
+            
+            performThreeWayMerge(base, ours, theirs) {
+                const maxLength = Math.max(base.length, ours.length, theirs.length);
+                const result = [];
+                
+                for (let i = 0; i < maxLength; i++) {
+                    const baseLine = base[i] || '';
+                    const ourLine = ours[i] || '';
+                    const theirLine = theirs[i] || '';
+                    
+                    // Determine the type of change
+                    const changeType = this.determineChangeType(baseLine, ourLine, theirLine);
+                    
+                    switch (changeType) {
+                        case 'identical':
+                            if (baseLine !== '') {
+                                result.push({
+                                    type: 'identical',
+                                    content: baseLine
+                                });
+                            }
+                            break;
+                            
+                        case 'ours-only':
+                            result.push({
+                                type: 'ours',
+                                content: ourLine
+                            });
+                            break;
+                            
+                        case 'theirs-only':
+                            result.push({
+                                type: 'theirs',
+                                content: theirLine
+                            });
+                            break;
+                            
+                        case 'conflict':
+                            result.push({
+                                type: 'conflict',
+                                content: `<<<<<<< HEAD\n${ourLine}\n=======\n${theirLine}\n>>>>>>> MERGE_HEAD`
+                            });
+                            break;
+                            
+                        case 'both-deleted':
+                            // Don't add anything if both deleted
+                            break;
+                            
+                        case 'ours-deleted':
+                            if (theirLine !== baseLine && theirLine !== '') {
+                                result.push({
+                                    type: 'conflict',
+                                    content: `<<<<<<< HEAD\n(deleted)\n=======\n${theirLine}\n>>>>>>> MERGE_HEAD`
+                                });
+                            }
+                            break;
+                            
+                        case 'theirs-deleted':
+                            if (ourLine !== baseLine && ourLine !== '') {
+                                result.push({
+                                    type: 'conflict',
+                                    content: `<<<<<<< HEAD\n${ourLine}\n=======\n(deleted)\n>>>>>>> MERGE_HEAD`
+                                });
+                            }
+                            break;
+                    }
+                }
+                
+                return result;
+            }
+            
+            determineChangeType(base, ours, theirs) {
+                // All three are identical
+                if (base === ours && ours === theirs) {
+                    return 'identical';
+                }
+                
+                // Only we changed
+                if (base === theirs && base !== ours) {
+                    return 'ours-only';
+                }
+                
+                // Only they changed
+                if (base === ours && base !== theirs) {
+                    return 'theirs-only';
+                }
+                
+                // Both deleted
+                if (base !== '' && ours === '' && theirs === '') {
+                    return 'both-deleted';
+                }
+                
+                // We deleted, they kept or changed
+                if (base !== '' && ours === '' && theirs !== '') {
+                    return 'ours-deleted';
+                }
+                
+                // They deleted, we kept or changed
+                if (base !== '' && ours !== '' && theirs === '') {
+                    return 'theirs-deleted';
+                }
+                
+                // Both changed differently - conflict
+                if (ours !== theirs) {
+                    return 'conflict';
+                }
+                
+                return 'identical';
+            }
+            
+            displayMergedResult(mergedResult) {
+                this.mergedResult.innerHTML = '';
+                
+                mergedResult.forEach(line => {
+                    const lineElement = document.createElement('div');
+                    lineElement.className = `line-${line.type}`;
+                    
+                    if (line.type === 'conflict') {
+                        lineElement.innerHTML = this.formatConflictMarkers(line.content);
+                    } else {
+                        lineElement.textContent = line.content;
+                    }
+                    
+                    this.mergedResult.appendChild(lineElement);
+                });
+                
+                // Add animation
+                this.mergedResult.style.opacity = '0';
+                setTimeout(() => {
+                    this.mergedResult.style.transition = 'opacity 0.5s ease';
+                    this.mergedResult.style.opacity = '1';
+                }, 100);
+            }
+            
+            formatConflictMarkers(content) {
+                return content
+                    .replace(/<<<<<<< HEAD/g, '<span class="conflict-marker"><<<<<<< HEAD</span>')
+                    .replace(/=======/g, '<span class="conflict-marker">=======</span>')
+                    .replace(/>>>>>>> MERGE_HEAD/g, '<span class="conflict-marker">>>>>>>> MERGE_HEAD</span>');
+            }
+        }
+        
+        // Initialize the simulator when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new GitMergeSimulator();
+        });
+    </script>
+</body>
+</html>
