@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Git Three-Way Merge Simulator</title>
+    <title>Interactive Git Three-Way Merge Visualizer</title>
     <style>
         * {
             margin: 0;
@@ -20,7 +20,7 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
@@ -40,11 +40,25 @@
             background-clip: text;
         }
 
+        /* Input Section */
         .input-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(236, 240, 241, 0.5);
+            border-radius: 15px;
+        }
+
+        .input-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .input-textareas {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             gap: 20px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .input-group {
@@ -65,103 +79,141 @@
 
         textarea {
             width: 100%;
-            height: 300px;
-            padding: 15px;
+            height: 200px;
+            padding: 12px;
             border: 2px solid #ddd;
-            border-radius: 10px;
+            border-radius: 8px;
             font-family: 'Courier New', monospace;
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.4;
             resize: vertical;
-            transition: border-color 0.3s ease;
-        }
-
-        textarea:focus {
-            outline: none;
-            border-color: #3498db;
         }
 
         .base-input { border-color: #e67e22; }
         .ours-input { border-color: #27ae60; }
         .theirs-input { border-color: #3498db; }
 
-        .controls {
+        .input-controls {
             text-align: center;
+            gap: 15px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Visualization Section */
+        .viz-section {
             margin-bottom: 30px;
         }
 
-        .merge-btn {
-            background: linear-gradient(45deg, #3498db, #2980b9);
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            font-size: 1.2em;
-            font-weight: 600;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
-        }
-
-        .merge-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
-        }
-
-        .merge-btn:active {
-            transform: translateY(0);
-        }
-
-        .output-section {
-            margin-top: 30px;
-        }
-
-        .output-section label {
-            font-weight: 600;
-            margin-bottom: 15px;
+        .viz-section h2 {
             color: #2c3e50;
-            font-size: 1.3em;
-            display: block;
+            margin-bottom: 20px;
+            text-align: center;
         }
 
-        .merged-result {
-            width: 100%;
-            min-height: 300px;
-            padding: 20px;
-            border: 2px solid #34495e;
-            border-radius: 10px;
+        .panes-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .pane {
             background: #f8f9fa;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            overflow-x: auto;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            min-height: 400px;
+            overflow-y: auto;
+            position: relative;
         }
 
-        /* Merge result highlighting */
+        .pane-header {
+            padding: 12px;
+            font-weight: 600;
+            text-align: center;
+            border-bottom: 2px solid #ddd;
+            position: sticky;
+            top: 0;
+            background: inherit;
+            z-index: 10;
+        }
+
+        .base-pane { border-color: #e67e22; }
+        .base-pane .pane-header { background: #fdf2e9; color: #e67e22; }
+
+        .ours-pane { border-color: #27ae60; }
+        .ours-pane .pane-header { background: #eafaf1; color: #27ae60; }
+
+        .theirs-pane { border-color: #3498db; }
+        .theirs-pane .pane-header { background: #ebf3fd; color: #3498db; }
+
+        .merged-pane { border-color: #34495e; }
+        .merged-pane .pane-header { background: #f4f6f7; color: #34495e; }
+
+        .pane-content {
+            padding: 0;
+        }
+
+        .line {
+            padding: 8px 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            border-bottom: 1px solid #eee;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .line:last-child {
+            border-bottom: none;
+        }
+
+        .line-number {
+            display: inline-block;
+            width: 30px;
+            color: #999;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+
+        /* Line highlighting states */
+        .line-processing {
+            background: #fff3cd !important;
+            border: 2px solid #ffc107 !important;
+            box-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
         .line-identical {
-            background: transparent;
+            background: rgba(108, 117, 125, 0.1);
         }
 
         .line-ours {
             background: rgba(39, 174, 96, 0.2);
             border-left: 4px solid #27ae60;
-            padding-left: 10px;
-            margin: 2px 0;
         }
 
         .line-theirs {
             background: rgba(52, 152, 219, 0.2);
             border-left: 4px solid #3498db;
-            padding-left: 10px;
-            margin: 2px 0;
+        }
+
+        .line-both-changed {
+            background: rgba(155, 89, 182, 0.2);
+            border-left: 4px solid #9b59b6;
         }
 
         .line-conflict {
             background: rgba(231, 76, 60, 0.2);
             border-left: 4px solid #e74c3c;
-            padding-left: 10px;
-            margin: 2px 0;
         }
 
         .conflict-marker {
@@ -169,10 +221,126 @@
             font-weight: bold;
         }
 
+        .line-deleted {
+            background: rgba(189, 195, 199, 0.3);
+            text-decoration: line-through;
+            color: #7f8c8d;
+        }
+
+        /* Controls */
+        .controls {
+            background: rgba(52, 73, 94, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .controls h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #27ae60, #229954);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .speed-slider {
+            width: 150px;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+        }
+
+        .speed-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            border: none;
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
         .legend {
             display: flex;
             justify-content: center;
-            gap: 30px;
+            gap: 20px;
             margin-bottom: 20px;
             flex-wrap: wrap;
         }
@@ -191,74 +359,99 @@
             border: 1px solid #ddd;
         }
 
-        .legend-identical { background: transparent; }
+        .legend-processing { background: #fff3cd; }
+        .legend-identical { background: rgba(108, 117, 125, 0.1); }
         .legend-ours { background: rgba(39, 174, 96, 0.2); }
         .legend-theirs { background: rgba(52, 152, 219, 0.2); }
+        .legend-both { background: rgba(155, 89, 182, 0.2); }
         .legend-conflict { background: rgba(231, 76, 60, 0.2); }
 
-        .example-btn {
-            background: linear-gradient(45deg, #9b59b6, #8e44ad);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 0.9em;
-            border-radius: 15px;
-            cursor: pointer;
-            margin-left: 15px;
-            transition: all 0.3s ease;
-        }
-
-        .example-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 5px 15px rgba(155, 89, 182, 0.3);
+        @media (max-width: 1200px) {
+            .panes-container {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: 1fr 1fr;
+            }
+            
+            .input-textareas {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media (max-width: 768px) {
-            .input-section {
+            .panes-container {
                 grid-template-columns: 1fr;
+            }
+            
+            .control-row {
+                flex-direction: column;
             }
             
             .legend {
                 flex-direction: column;
                 align-items: center;
             }
-            
-            h1 {
-                font-size: 2em;
-            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Git Three-Way Merge Simulator</h1>
+        <h1>🔀 Interactive Git Three-Way Merge Visualizer</h1>
         
+        <!-- Input Section -->
         <div class="input-section">
-            <div class="input-group">
-                <label for="base-input" class="base-label">Common Ancestor (Base)</label>
-                <textarea id="base-input" class="base-input" placeholder="Enter the original file content here..."></textarea>
+            <h2>📝 Input Code Files</h2>
+            <div class="input-textareas">
+                <div class="input-group">
+                    <label for="base-textarea" class="base-label">Common Ancestor (Base)</label>
+                    <textarea id="base-textarea" class="base-input" placeholder="Enter base version...">function calculatePrice(item) {
+    let price = item.basePrice;
+    return price;
+}
+
+const TAX_RATE = 0.08;</textarea>
+                </div>
+                
+                <div class="input-group">
+                    <label for="ours-textarea" class="ours-label">Our Branch (HEAD)</label>
+                    <textarea id="ours-textarea" class="ours-input" placeholder="Enter our changes...">function calculatePrice(item) {
+    let price = item.basePrice;
+    if (item.discount) {
+        price = price * (1 - item.discount);
+    }
+    return price;
+}
+
+const TAX_RATE = 0.08;
+const MAX_DISCOUNT = 0.5;</textarea>
+                </div>
+                
+                <div class="input-group">
+                    <label for="theirs-textarea" class="theirs-label">Their Branch (MERGE_HEAD)</label>
+                    <textarea id="theirs-textarea" class="theirs-input" placeholder="Enter their changes...">function calculatePrice(item) {
+    let price = item.basePrice;
+    price = price * (1 + TAX_RATE);
+    return price;
+}
+
+const TAX_RATE = 0.10;</textarea>
+                </div>
             </div>
             
-            <div class="input-group">
-                <label for="ours-input" class="ours-label">Our Branch (HEAD)</label>
-                <textarea id="ours-input" class="ours-input" placeholder="Enter our branch changes here..."></textarea>
-            </div>
-            
-            <div class="input-group">
-                <label for="theirs-input" class="theirs-label">Their Branch (MERGE_HEAD)</label>
-                <textarea id="theirs-input" class="theirs-input" placeholder="Enter their branch changes here..."></textarea>
+            <div class="input-controls">
+                <button id="load-btn" class="btn btn-primary">📋 Load Simulation</button>
+                <button id="example-btn" class="btn btn-success">📖 Load Example</button>
             </div>
         </div>
-        
-        <div class="controls">
-            <button id="merge-btn" class="merge-btn">Run Merge Simulation</button>
-            <button id="example-btn" class="example-btn">Load Example</button>
-        </div>
-        
-        <div class="output-section">
-            <label for="merged-result">Merged Result</label>
+
+        <!-- Visualization Section -->
+        <div class="viz-section">
+            <h2>🎬 Merge Algorithm Visualization</h2>
             
             <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color legend-processing"></div>
+                    <span>Currently Processing</span>
+                </div>
                 <div class="legend-item">
                     <div class="legend-color legend-identical"></div>
                     <span>Identical</span>
@@ -272,223 +465,469 @@
                     <span>Their Changes</span>
                 </div>
                 <div class="legend-item">
+                    <div class="legend-color legend-both"></div>
+                    <span>Both Changed (Same)</span>
+                </div>
+                <div class="legend-item">
                     <div class="legend-color legend-conflict"></div>
-                    <span>Conflicts</span>
+                    <span>Conflict</span>
                 </div>
             </div>
             
-            <div id="merged-result" class="merged-result"></div>
+            <div class="panes-container">
+                <div class="pane base-pane">
+                    <div class="pane-header">Common Ancestor (Base)</div>
+                    <div id="base-pane-content" class="pane-content"></div>
+                </div>
+                
+                <div class="pane ours-pane">
+                    <div class="pane-header">Our Branch (HEAD)</div>
+                    <div id="ours-pane-content" class="pane-content"></div>
+                </div>
+                
+                <div class="pane theirs-pane">
+                    <div class="pane-header">Their Branch (MERGE_HEAD)</div>
+                    <div id="theirs-pane-content" class="pane-content"></div>
+                </div>
+                
+                <div class="pane merged-pane">
+                    <div class="pane-header">Merged Result</div>
+                    <div id="merged-pane-content" class="pane-content"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Section -->
+        <div class="controls">
+            <h3>🎮 Simulation Controls</h3>
+            
+            <div class="control-row">
+                <button id="start-btn" class="btn btn-success">▶️ Start</button>
+                <button id="pause-btn" class="btn btn-warning" disabled>⏸️ Pause</button>
+                <button id="step-btn" class="btn btn-primary">⏭️ Step</button>
+                <button id="reset-btn" class="btn btn-danger">🔄 Reset</button>
+            </div>
+            
+            <div class="control-row">
+                <div class="speed-control">
+                    <span>Speed:</span>
+                    <input type="range" id="speed-slider" class="speed-slider" min="0" max="2000" value="1000">
+                    <span id="speed-display">1000ms</span>
+                </div>
+            </div>
+            
+            <div class="status" id="status">
+                Load simulation data to begin
+            </div>
         </div>
     </div>
 
     <script>
-        class GitMergeSimulator {
+        class GitMergeVisualizer {
             constructor() {
-                this.baseInput = document.getElementById('base-input');
-                this.oursInput = document.getElementById('ours-input');
-                this.theirsInput = document.getElementById('theirs-input');
-                this.mergedResult = document.getElementById('merged-result');
-                this.mergeBtn = document.getElementById('merge-btn');
+                // Input elements
+                this.baseTextarea = document.getElementById('base-textarea');
+                this.oursTextarea = document.getElementById('ours-textarea');
+                this.theirsTextarea = document.getElementById('theirs-textarea');
+                
+                // Display panes
+                this.basePaneContent = document.getElementById('base-pane-content');
+                this.oursPaneContent = document.getElementById('ours-pane-content');
+                this.theirsPaneContent = document.getElementById('theirs-pane-content');
+                this.mergedPaneContent = document.getElementById('merged-pane-content');
+                
+                // Control elements
+                this.loadBtn = document.getElementById('load-btn');
                 this.exampleBtn = document.getElementById('example-btn');
+                this.startBtn = document.getElementById('start-btn');
+                this.pauseBtn = document.getElementById('pause-btn');
+                this.stepBtn = document.getElementById('step-btn');
+                this.resetBtn = document.getElementById('reset-btn');
+                this.speedSlider = document.getElementById('speed-slider');
+                this.speedDisplay = document.getElementById('speed-display');
+                this.status = document.getElementById('status');
+                
+                // Simulation state
+                this.baseLines = [];
+                this.oursLines = [];
+                this.theirsLines = [];
+                this.currentLineIndex = 0;
+                this.maxLines = 0;
+                this.isRunning = false;
+                this.intervalId = null;
+                this.isDataLoaded = false;
                 
                 this.setupEventListeners();
             }
             
             setupEventListeners() {
-                this.mergeBtn.addEventListener('click', () => this.runMergeSimulation());
+                this.loadBtn.addEventListener('click', () => this.loadSimulation());
                 this.exampleBtn.addEventListener('click', () => this.loadExample());
+                this.startBtn.addEventListener('click', () => this.startSimulation());
+                this.pauseBtn.addEventListener('click', () => this.pauseSimulation());
+                this.stepBtn.addEventListener('click', () => this.stepSimulation());
+                this.resetBtn.addEventListener('click', () => this.resetSimulation());
+                this.speedSlider.addEventListener('input', () => this.updateSpeed());
             }
             
             loadExample() {
-                this.baseInput.value = `function calculateTotal(items) {
-    let total = 0;
-    for (let item of items) {
-        total += item.price;
-    }
-    return total;
+                this.baseTextarea.value = `function calculatePrice(item) {
+    let price = item.basePrice;
+    return price;
 }
 
 const TAX_RATE = 0.08;`;
 
-                this.oursInput.value = `function calculateTotal(items) {
-    let total = 0;
-    for (let item of items) {
-        total += item.price * item.quantity;
+                this.oursTextarea.value = `function calculatePrice(item) {
+    let price = item.basePrice;
+    if (item.discount) {
+        price = price * (1 - item.discount);
     }
-    return total;
+    return price;
 }
 
 const TAX_RATE = 0.08;
-const DISCOUNT_RATE = 0.1;`;
+const MAX_DISCOUNT = 0.5;`;
 
-                this.theirsInput.value = `function calculateTotal(items) {
-    let total = 0;
-    for (let item of items) {
-        total += item.price;
-    }
-    return Math.round(total * 100) / 100;
+                this.theirsTextarea.value = `function calculatePrice(item) {
+    let price = item.basePrice;
+    price = price * (1 + TAX_RATE);
+    return price;
 }
 
-const TAX_RATE = 0.09;`;
+const TAX_RATE = 0.10;`;
             }
             
-            runMergeSimulation() {
-                const baseLines = this.splitIntoLines(this.baseInput.value);
-                const oursLines = this.splitIntoLines(this.oursInput.value);
-                const theirsLines = this.splitIntoLines(this.theirsInput.value);
+            /**
+             * Loads simulation data from textareas and prepares visualization panes
+             */
+            loadSimulation() {
+                // Parse input text into line arrays
+                this.baseLines = this.parseTextToLines(this.baseTextarea.value);
+                this.oursLines = this.parseTextToLines(this.oursTextarea.value);
+                this.theirsLines = this.parseTextToLines(this.theirsTextarea.value);
                 
-                const mergedResult = this.performThreeWayMerge(baseLines, oursLines, theirsLines);
-                this.displayMergedResult(mergedResult);
+                // Calculate maximum lines for simulation
+                this.maxLines = Math.max(this.baseLines.length, this.oursLines.length, this.theirsLines.length);
+                
+                // Pad arrays to same length for easier processing
+                this.padArraysToSameLength();
+                
+                // Render lines in visualization panes
+                this.renderPanes();
+                
+                // Reset simulation state
+                this.currentLineIndex = 0;
+                this.isDataLoaded = true;
+                
+                // Enable controls
+                this.updateControlStates();
+                this.updateStatus('Simulation loaded. Ready to start merge process.');
             }
             
-            splitIntoLines(text) {
+            /**
+             * Converts text to array of lines, handling empty lines
+             */
+            parseTextToLines(text) {
+                if (!text.trim()) return [];
                 return text.split('\n');
             }
             
-            performThreeWayMerge(base, ours, theirs) {
-                const maxLength = Math.max(base.length, ours.length, theirs.length);
-                const result = [];
-                
-                for (let i = 0; i < maxLength; i++) {
-                    const baseLine = base[i] || '';
-                    const ourLine = ours[i] || '';
-                    const theirLine = theirs[i] || '';
-                    
-                    // Determine the type of change
-                    const changeType = this.determineChangeType(baseLine, ourLine, theirLine);
-                    
-                    switch (changeType) {
-                        case 'identical':
-                            if (baseLine !== '') {
-                                result.push({
-                                    type: 'identical',
-                                    content: baseLine
-                                });
-                            }
-                            break;
-                            
-                        case 'ours-only':
-                            result.push({
-                                type: 'ours',
-                                content: ourLine
-                            });
-                            break;
-                            
-                        case 'theirs-only':
-                            result.push({
-                                type: 'theirs',
-                                content: theirLine
-                            });
-                            break;
-                            
-                        case 'conflict':
-                            result.push({
-                                type: 'conflict',
-                                content: `<<<<<<< HEAD\n${ourLine}\n=======\n${theirLine}\n>>>>>>> MERGE_HEAD`
-                            });
-                            break;
-                            
-                        case 'both-deleted':
-                            // Don't add anything if both deleted
-                            break;
-                            
-                        case 'ours-deleted':
-                            if (theirLine !== baseLine && theirLine !== '') {
-                                result.push({
-                                    type: 'conflict',
-                                    content: `<<<<<<< HEAD\n(deleted)\n=======\n${theirLine}\n>>>>>>> MERGE_HEAD`
-                                });
-                            }
-                            break;
-                            
-                        case 'theirs-deleted':
-                            if (ourLine !== baseLine && ourLine !== '') {
-                                result.push({
-                                    type: 'conflict',
-                                    content: `<<<<<<< HEAD\n${ourLine}\n=======\n(deleted)\n>>>>>>> MERGE_HEAD`
-                                });
-                            }
-                            break;
-                    }
+            /**
+             * Pads all line arrays to the same length with empty strings
+             */
+            padArraysToSameLength() {
+                while (this.baseLines.length < this.maxLines) {
+                    this.baseLines.push('');
                 }
-                
-                return result;
+                while (this.oursLines.length < this.maxLines) {
+                    this.oursLines.push('');
+                }
+                while (this.theirsLines.length < this.maxLines) {
+                    this.theirsLines.push('');
+                }
             }
             
-            determineChangeType(base, ours, theirs) {
-                // All three are identical
-                if (base === ours && ours === theirs) {
-                    return 'identical';
-                }
-                
-                // Only we changed
-                if (base === theirs && base !== ours) {
-                    return 'ours-only';
-                }
-                
-                // Only they changed
-                if (base === ours && base !== theirs) {
-                    return 'theirs-only';
-                }
-                
-                // Both deleted
-                if (base !== '' && ours === '' && theirs === '') {
-                    return 'both-deleted';
-                }
-                
-                // We deleted, they kept or changed
-                if (base !== '' && ours === '' && theirs !== '') {
-                    return 'ours-deleted';
-                }
-                
-                // They deleted, we kept or changed
-                if (base !== '' && ours !== '' && theirs === '') {
-                    return 'theirs-deleted';
-                }
-                
-                // Both changed differently - conflict
-                if (ours !== theirs) {
-                    return 'conflict';
-                }
-                
-                return 'identical';
+            /**
+             * Renders line-by-line content in all visualization panes
+             */
+            renderPanes() {
+                this.renderPane(this.basePaneContent, this.baseLines);
+                this.renderPane(this.oursPaneContent, this.oursLines);
+                this.renderPane(this.theirsPaneContent, this.theirsLines);
+                this.mergedPaneContent.innerHTML = ''; // Clear merged result
             }
             
-            displayMergedResult(mergedResult) {
-                this.mergedResult.innerHTML = '';
-                
-                mergedResult.forEach(line => {
+            /**
+             * Renders individual pane with numbered lines
+             */
+            renderPane(paneElement, lines) {
+                paneElement.innerHTML = '';
+                lines.forEach((line, index) => {
                     const lineElement = document.createElement('div');
-                    lineElement.className = `line-${line.type}`;
-                    
-                    if (line.type === 'conflict') {
-                        lineElement.innerHTML = this.formatConflictMarkers(line.content);
-                    } else {
-                        lineElement.textContent = line.content;
-                    }
-                    
-                    this.mergedResult.appendChild(lineElement);
+                    lineElement.className = 'line';
+                    lineElement.innerHTML = `<span class="line-number">${index + 1}</span>${this.escapeHtml(line)}`;
+                    lineElement.dataset.lineIndex = index;
+                    paneElement.appendChild(lineElement);
                 });
-                
-                // Add animation
-                this.mergedResult.style.opacity = '0';
-                setTimeout(() => {
-                    this.mergedResult.style.transition = 'opacity 0.5s ease';
-                    this.mergedResult.style.opacity = '1';
-                }, 100);
             }
             
+            /**
+             * Escapes HTML characters for safe display
+             */
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            /**
+             * Starts the automatic simulation
+             */
+            startSimulation() {
+                if (!this.isDataLoaded) {
+                    this.updateStatus('Please load simulation data first.');
+                    return;
+                }
+                
+                this.isRunning = true;
+                this.updateControlStates();
+                this.updateStatus('Simulation running...');
+                
+                // Start interval for automatic stepping
+                const speed = parseInt(this.speedSlider.value);
+                this.intervalId = setInterval(() => {
+                    this.stepSimulation();
+                }, speed);
+            }
+            
+            /**
+             * Pauses the automatic simulation
+             */
+            pauseSimulation() {
+                this.isRunning = false;
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = null;
+                }
+                this.updateControlStates();
+                this.updateStatus('Simulation paused.');
+            }
+            
+            /**
+             * Advances simulation by one step (processes one line)
+             */
+            stepSimulation() {
+                if (!this.isDataLoaded || this.currentLineIndex >= this.maxLines) {
+                    if (this.currentLineIndex >= this.maxLines) {
+                        this.completeSimulation();
+                    }
+                    return;
+                }
+                
+                // Clear previous processing highlights
+                this.clearProcessingHighlights();
+                
+                // Get current lines
+                const baseLine = this.baseLines[this.currentLineIndex];
+                const ourLine = this.oursLines[this.currentLineIndex];
+                const theirLine = this.theirsLines[this.currentLineIndex];
+                
+                // Highlight currently processing lines
+                this.highlightProcessingLines(this.currentLineIndex);
+                
+                // Determine merge decision
+                const mergeDecision = this.determineMergeDecision(baseLine, ourLine, theirLine);
+                
+                // Add result to merged pane
+                this.addToMergedResult(mergeDecision);
+                
+                // Update status
+                this.updateStatus(`Processing line ${this.currentLineIndex + 1} of ${this.maxLines}: ${mergeDecision.type}`);
+                
+                // Move to next line
+                this.currentLineIndex++;
+                
+                // Check if simulation is complete
+                if (this.currentLineIndex >= this.maxLines) {
+                    this.completeSimulation();
+                }
+            }
+            
+            /**
+             * Determines how to merge a line based on three-way comparison
+             */
+            determineMergeDecision(baseLine, ourLine, theirLine) {
+                // Handle empty lines (padding)
+                if (baseLine === '' && ourLine === '' && theirLine === '') {
+                    return { type: 'empty', content: '', cssClass: 'line-identical' };
+                }
+                
+                // All three are identical
+                if (baseLine === ourLine && ourLine === theirLine) {
+                    return { type: 'identical', content: baseLine, cssClass: 'line-identical' };
+                }
+                
+                // Only our branch changed
+                if (baseLine === theirLine && baseLine !== ourLine) {
+                    return { type: 'ours-only', content: ourLine, cssClass: 'line-ours' };
+                }
+                
+                // Only their branch changed
+                if (baseLine === ourLine && baseLine !== theirLine) {
+                    return { type: 'theirs-only', content: theirLine, cssClass: 'line-theirs' };
+                }
+                
+                // Both changed to the same thing
+                if (ourLine === theirLine && baseLine !== ourLine) {
+                    return { type: 'both-same', content: ourLine, cssClass: 'line-both-changed' };
+                }
+                
+                // Conflict: both changed differently
+                if (baseLine !== ourLine && baseLine !== theirLine && ourLine !== theirLine) {
+                    const conflictContent = `<<<<<<< HEAD\n${ourLine}\n=======\n${theirLine}\n>>>>>>> MERGE_HEAD`;
+                    return { type: 'conflict', content: conflictContent, cssClass: 'line-conflict' };
+                }
+                
+                // Handle deletion cases
+                if (baseLine !== '') {
+                    if (ourLine === '' && theirLine === '') {
+                        return { type: 'both-deleted', content: '', cssClass: 'line-identical' };
+                    }
+                    if (ourLine === '' && theirLine !== '') {
+                        return { type: 'conflict-deletion', content: `<<<<<<< HEAD\n(deleted)\n=======\n${theirLine}\n>>>>>>> MERGE_HEAD`, cssClass: 'line-conflict' };
+                    }
+                    if (ourLine !== '' && theirLine === '') {
+                        return { type: 'conflict-deletion', content: `<<<<<<< HEAD\n${ourLine}\n=======\n(deleted)\n>>>>>>> MERGE_HEAD`, cssClass: 'line-conflict' };
+                    }
+                }
+                
+                // Default to identical
+                return { type: 'identical', content: baseLine, cssClass: 'line-identical' };
+            }
+            
+            /**
+             * Highlights the currently processing lines in all input panes
+             */
+            highlightProcessingLines(lineIndex) {
+                const panes = [this.basePaneContent, this.oursPaneContent, this.theirsPaneContent];
+                panes.forEach(pane => {
+                    const lineElement = pane.querySelector(`[data-line-index="${lineIndex}"]`);
+                    if (lineElement) {
+                        lineElement.classList.add('line-processing');
+                    }
+                });
+            }
+            
+            /**
+             * Clears processing highlights from all panes
+             */
+            clearProcessingHighlights() {
+                const processingElements = document.querySelectorAll('.line-processing');
+                processingElements.forEach(element => {
+                    element.classList.remove('line-processing');
+                });
+            }
+            
+            /**
+             * Adds merge decision result to the merged result pane
+             */
+            addToMergedResult(mergeDecision) {
+                if (mergeDecision.type === 'empty') {
+                    return; // Skip empty lines
+                }
+                
+                const resultElement = document.createElement('div');
+                resultElement.className = `line ${mergeDecision.cssClass}`;
+                
+                if (mergeDecision.type === 'conflict' || mergeDecision.type === 'conflict-deletion') {
+                    resultElement.innerHTML = `<span class="line-number">${this.currentLineIndex + 1}</span>${this.formatConflictMarkers(mergeDecision.content)}`;
+                } else {
+                    resultElement.innerHTML = `<span class="line-number">${this.currentLineIndex + 1}</span>${this.escapeHtml(mergeDecision.content)}`;
+                }
+                
+                this.mergedPaneContent.appendChild(resultElement);
+                
+                // Scroll to bottom of merged pane
+                this.mergedPaneContent.scrollTop = this.mergedPaneContent.scrollHeight;
+            }
+            
+            /**
+             * Formats conflict markers with proper styling
+             */
             formatConflictMarkers(content) {
-                return content
-                    .replace(/<<<<<<< HEAD/g, '<span class="conflict-marker"><<<<<<< HEAD</span>')
+                return this.escapeHtml(content)
+                    .replace(/&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD/g, '<span class="conflict-marker">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</span>')
                     .replace(/=======/g, '<span class="conflict-marker">=======</span>')
-                    .replace(/>>>>>>> MERGE_HEAD/g, '<span class="conflict-marker">>>>>>>> MERGE_HEAD</span>');
+                    .replace(/&gt;&gt;&gt;&gt;&gt;&gt;&gt; MERGE_HEAD/g, '<span class="conflict-marker">&gt;&gt;&gt;&gt;&gt;&gt;&gt; MERGE_HEAD</span>');
+            }
+            
+            /**
+             * Completes the simulation process
+             */
+            completeSimulation() {
+                this.isRunning = false;
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = null;
+                }
+                this.clearProcessingHighlights();
+                this.updateControlStates();
+                this.updateStatus('🎉 Merge simulation completed!');
+            }
+            
+            /**
+             * Resets the simulation to initial state
+             */
+            resetSimulation() {
+                this.pauseSimulation();
+                this.currentLineIndex = 0;
+                this.clearProcessingHighlights();
+                this.mergedPaneContent.innerHTML = '';
+                this.updateControlStates();
+                this.updateStatus('Simulation reset. Ready to start again.');
+            }
+            
+            /**
+             * Updates control button states based on simulation state
+             */
+            updateControlStates() {
+                const hasData = this.isDataLoaded;
+                const isComplete = this.currentLineIndex >= this.maxLines;
+                
+                this.startBtn.disabled = !hasData || this.isRunning || isComplete;
+                this.pauseBtn.disabled = !this.isRunning;
+                this.stepBtn.disabled = !hasData || isComplete;
+                this.resetBtn.disabled = !hasData;
+            }
+            
+            /**
+             * Updates the speed display and restarts interval if running
+             */
+            updateSpeed() {
+                const speed = parseInt(this.speedSlider.value);
+                this.speedDisplay.textContent = `${speed}ms`;
+                
+                // Restart interval with new speed if currently running
+                if (this.isRunning && this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = setInterval(() => {
+                        this.stepSimulation();
+                    }, speed);
+                }
+            }
+            
+            /**
+             * Updates the status display
+             */
+            updateStatus(message) {
+                this.status.textContent = message;
             }
         }
         
-        // Initialize the simulator when the page loads
+        // Initialize the visualizer when the page loads
         document.addEventListener('DOMContentLoaded', () => {
-            new GitMergeSimulator();
+            new GitMergeVisualizer();
         });
     </script>
 </body>
